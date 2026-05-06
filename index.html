@@ -8,19 +8,16 @@
 		/>
 		<title>IRICHMAN Club</title>
 		<script src="https://telegram.org/js/telegram-web-app.js"></script>
-		<!-- TON Connect UI -->
 		<script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
 		<style>
 			:root {
 				--bg: var(--tg-theme-bg-color, #fff);
 				--text: var(--tg-theme-text-color, #000);
-				--btn-bg: var(--tg-theme-button-color, #3390ec);
+				--btn: var(--tg-theme-button-color, #3390ec);
 				--btn-text: var(--tg-theme-button-text-color, #fff);
 			}
 			body {
-				font-family:
-					-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-					sans-serif;
+				font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 				background: var(--bg);
 				color: var(--text);
 				margin: 0;
@@ -28,42 +25,43 @@
 				text-align: center;
 			}
 			h1 {
-				font-size: 24px;
 				margin: 0 0 8px;
+				font-size: 24px;
 			}
 			p {
 				opacity: 0.7;
 				margin: 0 0 16px;
 			}
-			.wallet-info {
+			.wallet-box {
 				background: rgba(128, 128, 128, 0.1);
-				padding: 12px;
-				border-radius: 12px;
-				margin: 16px 0;
-				font-size: 13px;
-				word-break: break-all;
+				padding: 10px;
+				border-radius: 10px;
+				margin: 12px 0;
 				font-family: monospace;
+				font-size: 12px;
+				word-break: break-all;
 			}
 			.btn {
-				background: var(--btn-bg);
+				background: var(--btn);
 				color: var(--btn-text);
 				border: none;
-				padding: 14px 28px;
+				padding: 14px;
 				border-radius: 12px;
 				font-size: 16px;
 				font-weight: 500;
 				cursor: pointer;
 				width: 100%;
-				margin-bottom: 12px;
+				margin-bottom: 10px;
 			}
-			#connect-btn-container {
-				min-height: 48px;
-				margin-bottom: 12px;
+			.btn:disabled {
+				opacity: 0.5;
+				cursor: not-allowed;
 			}
 			#status {
 				font-size: 14px;
-				margin-top: 8px;
-				opacity: 0.75;
+				margin-top: 6px;
+				opacity: 0.8;
+				min-height: 20px;
 			}
 			.hidden {
 				display: none;
@@ -72,65 +70,69 @@
 	</head>
 	<body>
 		<h1>👑 IRICHMAN</h1>
-		<p>Тестовый NFT-клуб | TON Testnet</p>
-
-		<!-- Сюда TON Connect сам вставит кнопку -->
+		<p>Тестовый NFT-клуб | Sandbox</p>
 		<div id="connect-btn-container"></div>
-
 		<div id="post-wallet" class="hidden">
-			<div class="wallet-info" id="wallet-address">
-				Адрес не определён
-			</div>
-			<button class="btn" id="mint-btn">🎨 Отчеканить NFT</button>
-			<button class="btn" style="background: #555" id="check-btn">
-				🔍 Проверить владение
+			<div class="wallet-box" id="wallet-addr">Адрес не определён</div>
+			<button class="btn" id="mint-btn">
+				🎨 Отчеканить NFT (0.05 TON)
 			</button>
-			<div id="status">Ожидание действия...</div>
+			<div id="status">Ожидание...</div>
 		</div>
-
 		<script>
 			const tg = window.Telegram.WebApp
 			tg.expand()
 			tg.ready()
-
+			const API_URL = 'http://localhost:3000/api'
 			const postWallet = document.getElementById('post-wallet')
-			const walletAddressDiv = document.getElementById('wallet-address')
+			const walletAddrDiv = document.getElementById('wallet-addr')
 			const statusDiv = document.getElementById('status')
 			const mintBtn = document.getElementById('mint-btn')
-			const checkBtn = document.getElementById('check-btn')
-
-			// 1. Инициализация TON Connect UI
 			const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
 				manifestUrl:
 					'https://lss88.github.io/irichman-club/manifest.json',
 				buttonRootId: 'connect-btn-container',
 			})
-
-			// 2. Реагируем на изменение статуса кошелька
 			tonConnectUI.onStatusChange(wallet => {
 				if (wallet) {
 					postWallet.classList.remove('hidden')
 					const addr = wallet.account.address
-					walletAddressDiv.textContent = `🟢 ${addr.slice(0, 6)}...${addr.slice(-6)}`
-					statusDiv.textContent = '✅ Подключено к Testnet'
+					walletAddrDiv.textContent = `🟢 ${addr.slice(0, 6)}...${addr.slice(-6)}`
+					statusDiv.textContent = '✅ Подключено'
 				} else {
 					postWallet.classList.add('hidden')
 					statusDiv.textContent = 'Кошелёк отключён'
 				}
 			})
-
-			// 3. Заглушки для следующих шагов
-			mintBtn.addEventListener('click', () => {
-				tg.showPopup({
-					title: '🚧 Шаг 4',
-					message: 'Скоро подключим смарт-контракт для чеканки NFT.',
-				})
-			})
-			checkBtn.addEventListener('click', () => {
-				tg.showPopup({
-					title: '🔍 Проверка',
-					message: 'Баланс NFT: 0 | Статус: Не в клубе',
-				})
+			mintBtn.addEventListener('click', async () => {
+				if (!tonConnectUI.connected)
+					return tg.showAlert('Сначала подключи кошелёк')
+				mintBtn.disabled = true
+				statusDiv.textContent = '⏳ Чеканка...'
+				try {
+					const response = await fetch(`${API_URL}/mint`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							userAddress: tonConnectUI.wallet.account.address,
+						}),
+					})
+					const result = await response.json()
+					if (result.success) {
+						statusDiv.textContent = `✅ NFT отчеканен! Всего: ${result.totalMinted}`
+						tg.showPopup({
+							title: '🎉 Добро пожаловать!',
+							message: `Ты стал членом клуба IRICHMAN!\nNFT #${result.totalMinted}`,
+						})
+					} else {
+						statusDiv.textContent = `❌ Ошибка: ${result.error || 'Неизвестная'}`
+					}
+				} catch (err) {
+					statusDiv.textContent = '⚠️ Проверь, что запущен server.js'
+					console.error(err)
+				} finally {
+					mintBtn.disabled = false
+				}
 			})
 		</script>
 	</body>
