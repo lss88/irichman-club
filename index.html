@@ -8,6 +8,8 @@
 		/>
 		<title>IRICHMAN Club</title>
 		<script src="https://telegram.org/js/telegram-web-app.js"></script>
+		<!-- TON Connect UI -->
+		<script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
 		<style>
 			:root {
 				--bg: var(--tg-theme-bg-color, #fff);
@@ -31,7 +33,16 @@
 			}
 			p {
 				opacity: 0.7;
-				margin: 0 0 24px;
+				margin: 0 0 16px;
+			}
+			.wallet-info {
+				background: rgba(128, 128, 128, 0.1);
+				padding: 12px;
+				border-radius: 12px;
+				margin: 16px 0;
+				font-size: 13px;
+				word-break: break-all;
+				font-family: monospace;
 			}
 			.btn {
 				background: var(--btn-bg);
@@ -45,8 +56,9 @@
 				width: 100%;
 				margin-bottom: 12px;
 			}
-			.btn:active {
-				opacity: 0.85;
+			#connect-btn-container {
+				min-height: 48px;
+				margin-bottom: 12px;
 			}
 			#status {
 				font-size: 14px;
@@ -62,11 +74,13 @@
 		<h1>👑 IRICHMAN</h1>
 		<p>Тестовый NFT-клуб | TON Testnet</p>
 
-		<div id="pre-wallet">
-			<button class="btn" id="connect-btn">🔗 Подключить кошелёк</button>
-		</div>
+		<!-- Сюда TON Connect сам вставит кнопку -->
+		<div id="connect-btn-container"></div>
 
 		<div id="post-wallet" class="hidden">
+			<div class="wallet-info" id="wallet-address">
+				Адрес не определён
+			</div>
 			<button class="btn" id="mint-btn">🎨 Отчеканить NFT</button>
 			<button class="btn" style="background: #555" id="check-btn">
 				🔍 Проверить владение
@@ -79,31 +93,39 @@
 			tg.expand()
 			tg.ready()
 
-			const connectBtn = document.getElementById('connect-btn')
+			const postWallet = document.getElementById('post-wallet')
+			const walletAddressDiv = document.getElementById('wallet-address')
+			const statusDiv = document.getElementById('status')
 			const mintBtn = document.getElementById('mint-btn')
 			const checkBtn = document.getElementById('check-btn')
-			const statusDiv = document.getElementById('status')
-			const preWallet = document.getElementById('pre-wallet')
-			const postWallet = document.getElementById('post-wallet')
 
-			// Заглушка подключения кошелька (реализуем в Шаге 3)
-			connectBtn.addEventListener('click', () => {
-				statusDiv.textContent = '⏳ Подключение...'
-				setTimeout(() => {
-					preWallet.classList.add('hidden')
-					postWallet.classList.remove('hidden')
-					statusDiv.textContent = '🟢 Кошелёк подключён (тест)'
-				}, 1200)
+			// 1. Инициализация TON Connect UI
+			const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+				manifestUrl:
+					'https://lss88.github.io/irichman-club/manifest.json',
+				buttonRootId: 'connect-btn-container',
 			})
 
+			// 2. Реагируем на изменение статуса кошелька
+			tonConnectUI.onStatusChange(wallet => {
+				if (wallet) {
+					postWallet.classList.remove('hidden')
+					const addr = wallet.account.address
+					walletAddressDiv.textContent = `🟢 ${addr.slice(0, 6)}...${addr.slice(-6)}`
+					statusDiv.textContent = '✅ Подключено к Testnet'
+				} else {
+					postWallet.classList.add('hidden')
+					statusDiv.textContent = 'Кошелёк отключён'
+				}
+			})
+
+			// 3. Заглушки для следующих шагов
 			mintBtn.addEventListener('click', () => {
 				tg.showPopup({
-					title: '🚧 Скоро',
-					message:
-						'В Шаге 4 мы подключим реальный смарт-контракт для чеканки NFT в Testnet.',
+					title: '🚧 Шаг 4',
+					message: 'Скоро подключим смарт-контракт для чеканки NFT.',
 				})
 			})
-
 			checkBtn.addEventListener('click', () => {
 				tg.showPopup({
 					title: '🔍 Проверка',
